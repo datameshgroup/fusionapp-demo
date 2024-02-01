@@ -6,13 +6,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>1.0.0</Version>
+    <Version>1.2.0</Version>
     <Authors>DataMesh Integration</Authors>
     <Company>DataMesh Group</Company>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DataMeshGroup.Fusion.Model" Version="1.6.3" />
+    <PackageReference Include="DataMeshGroup.Fusion.Model" Version="1.8.0-rc8" />
   </ItemGroup>
 
 </Project>

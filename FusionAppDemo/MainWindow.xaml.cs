@@ -28,7 +28,7 @@ namespace FusionAppDemo
 
         private string saleId;
         private readonly bool initialised;
-
+        private TransactionIdentification? referencePOITransactionID = null;
 
         public MainWindow()
         {
@@ -67,6 +67,42 @@ namespace FusionAppDemo
 
             // New sale
             NewSale();
+        }
+
+        private async void BtnActivate_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await PerformGiftCardTransaction(true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing gift card activation\n\n{ex.Message}");
+            }            
+        }
+
+        private async void BtnDeactivate_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await PerformGiftCardTransaction(false);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing gift card deactivation\n\n{ex.Message}");
+            }
+        }
+
+        private async void BtnBalInq_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await PerformBalanceInquiry();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing balance inquiry\n\n{ex.Message}");
+            }
         }
 
         public async Task PerformPayment()
@@ -111,7 +147,73 @@ namespace FusionAppDemo
 
             // Build json and send/recv
             string? requestJson = messageParser.MessagePayloadToString(paymentRequest) ?? throw new Exception("Error building request message");
-            HttpRequestMessage httpRequestMessage = new(HttpMethod.Post, $"payments/{sessionId}?events=true")
+            await PerformTransaction("payments", MessageCategory.Payment, sessionId, requestJson);            
+        }
+
+        public async Task PerformGiftCardTransaction(bool activateGiftCard)
+        {
+            // Gift Card params
+            string sessionId = Guid.NewGuid().ToString(); // unique sessionId per request            
+            string saleId = LblSaleId.Content.ToString() ?? "";
+
+            // Check that we have valid gift card details
+            if (!decimal.TryParse(TxtGCAmount.Text, out decimal transactionAmount))
+            {
+                throw new Exception("Invalid Gift Card Amount.");
+            }                        
+            else if (string.IsNullOrEmpty(TxtEanUPC.Text) || (TxtEanUPC.Text.Trim().Length == 0))
+            {
+                throw new Exception("EAN/UPC must not be empty.");
+            } 
+            else if (string.IsNullOrEmpty(TxtStoredValueID.Text) || (TxtStoredValueID.Text.Trim().Length == 0))
+            {
+                throw new Exception("Stored Value ID must not be empty.");
+            }
+            OriginalPOITransaction? originalPOITransaction = null;                           
+            if (!activateGiftCard)
+            {
+                if (referencePOITransactionID == null)
+                {
+                    throw new Exception("Gift Card must be activated first.");
+                }
+                else
+                {
+                    originalPOITransaction = new OriginalPOITransaction
+                    {
+                        POITransactionID = referencePOITransactionID
+                    };
+                }
+
+            }
+
+            StoredValueTransactionType storedValueTransactionType = activateGiftCard?StoredValueTransactionType.Activate : StoredValueTransactionType.Reverse;
+
+            // Construct store value request
+            StoredValueRequest storedValueRequest = new StoredValueRequest(saleId);
+            StoredValueAccountID storedValueAccountID = new StoredValueAccountID()
+            {
+                EntryMode = EntryMode.Manual,
+                StoredValueAccountType = StoredValueAccountType.GiftCard,
+                IdentificationType = IdentificationType.BarCode,
+                StoredValueID = TxtStoredValueID.Text
+            };
+
+            storedValueRequest.AddStoredValueData(storedValueTransactionType, transactionAmount, null, storedValueAccountID, originalPOITransaction, "001", TxtEanUPC.Text, null, "AUD");
+
+            // Build json and send/recv
+            string ? requestJson = messageParser.MessagePayloadToString(storedValueRequest) ?? throw new Exception("Error building request message");
+
+            await PerformTransaction("storedvalue", MessageCategory.StoredValue, sessionId, requestJson, activateGiftCard);
+        }
+
+        public async Task PerformBalanceInquiry()
+        {
+            await PerformTransaction("balanceinquiry", MessageCategory.BalanceInquiry, Guid.NewGuid().ToString(), messageParser.MessagePayloadToString(new BalanceInquiryRequest()));
+        }
+
+        public async Task PerformTransaction(string endPoint, MessageCategory messageCategory, string sessionId, string requestJson, bool activation = false)
+        {
+            HttpRequestMessage httpRequestMessage = new(HttpMethod.Post, $"{endPoint}/{sessionId}?events=true")
             {
                 Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
             };
@@ -121,12 +223,14 @@ namespace FusionAppDemo
             HttpResponseMessage httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cts.Token);
             httpResponseMessage.EnsureSuccessStatusCode();
             PaymentResponse? paymentResponse = null;
+            StoredValueResponse? storedValueResponse = null;
+            BalanceInquiryResponse? balanceInquiryResponse = null;
             try
             {
                 bool awaitingResponse = true;
                 do
                 {
-                    httpResponseMessage = await httpClient.GetAsync($"payments/{sessionId}/events", cts.Token);
+                    httpResponseMessage = await httpClient.GetAsync($"{endPoint}/{sessionId}/events", cts.Token);
                     httpResponseMessage.EnsureSuccessStatusCode();
 
                     string responseJson = await httpResponseMessage.Content.ReadAsStringAsync(cts.Token);
@@ -136,8 +240,29 @@ namespace FusionAppDemo
                     switch (saleToPOIMessage.MessagePayload)
                     {
                         case PaymentResponse r:
-                            awaitingResponse = false;
-                            paymentResponse = r;
+                            if (messageCategory == MessageCategory.Payment)
+                            {
+                                awaitingResponse = false;
+                                paymentResponse = r;
+                            }
+                            break;
+                        case StoredValueResponse r:
+                            if (messageCategory == MessageCategory.StoredValue)
+                            {
+                                awaitingResponse = false;
+                                storedValueResponse = r;
+                                if (activation && r.Response.Success)
+                                {
+                                    referencePOITransactionID = r.POIData?.POITransactionID;
+                                }
+                            }
+                            break;
+                        case BalanceInquiryResponse r:
+                            if (messageCategory == MessageCategory.BalanceInquiry)
+                            {
+                                awaitingResponse = false;
+                                balanceInquiryResponse = r;
+                            }
                             break;
                         case PrintRequest r:
                             // Check if we need to send this receipt to the printer now
@@ -155,30 +280,73 @@ namespace FusionAppDemo
             }
             catch (Exception)
             {
-                paymentResponse = await PerformPaymentErrorHandling(sessionId, cts.Token);
+                switch(messageCategory)
+                {                    
+                    case MessageCategory.StoredValue:
+                        storedValueResponse = await PerformPaymentErrorHandling("storedvalue", messageCategory, sessionId, cts.Token) as StoredValueResponse;
+                        break;
+                    case MessageCategory.BalanceInquiry:
+                        balanceInquiryResponse = await PerformPaymentErrorHandling("balanceinquiry", messageCategory, sessionId, cts.Token) as BalanceInquiryResponse;
+                        break;                    
+                    case MessageCategory.Payment:
+                    default:
+                        paymentResponse = await PerformPaymentErrorHandling("payments", messageCategory, sessionId, cts.Token) as PaymentResponse;
+                        break;
+                }                
             }
 
-            if(paymentResponse == null)
+            switch(messageCategory)
             {
-                throw new Exception($"ERROR: Could not get payment result from FusionApp. Please check the terminal for the payment result");
-            }
+                case MessageCategory.StoredValue:
+                    if (storedValueResponse == null)
+                    {
+                        throw new Exception($"ERROR: Could not get gift card transaction result from FusionApp. Please initiate transaction again.");
+                    }
+                    else
+                    {
+                        // Handle result
+                        MessageBox.Show($"TRANSACTION COMPLETE\n\nRESULT:{storedValueResponse.Response.Result}\n\nRECEIPT TO PRINT\n{storedValueResponse.GetReceiptAsPlainText()}");
+                    }
+                    break;
+                case MessageCategory.BalanceInquiry:
+                    if (balanceInquiryResponse == null)
+                    {
+                        throw new Exception($"ERROR: Could not get balance inquiry result from FusionApp. Please initiate transaction again.");
+                    }
+                    else
+                    {
+                        // Handle result
+                        MessageBox.Show($"TRANSACTION COMPLETE\n\nRESULT:{balanceInquiryResponse.Response.Result}\n\nRECEIPT TO PRINT\n{balanceInquiryResponse.GetReceiptAsPlainText()}");
+                    }
+                    break;
+                case MessageCategory.Payment:
+                default:
+                    if (paymentResponse == null)
+                    {
+                        throw new Exception($"ERROR: Could not get payment result from FusionApp. Please check the terminal for the payment result");
+                    }
+                    else
+                    {
+                        // Handle result
+                        MessageBox.Show($"TRANSACTION COMPLETE\n\nRESULT:{paymentResponse.Response.Result}\n\nRECEIPT TO PRINT\n{paymentResponse.GetReceiptAsPlainText()}");
+                    }
+                    break;
 
-            // Handle result
-            MessageBox.Show($"TRANSACTION COMPLETE\n\nRESULT:{paymentResponse.Response.Result}\n\nRECEIPT TO PRINT\n{paymentResponse.GetReceiptAsPlainText()}");
+            }            
         }
 
-        public async Task<PaymentResponse?> PerformPaymentErrorHandling(string sessionId, CancellationToken cancellationToken)
+        public async Task<MessagePayload?> PerformPaymentErrorHandling(string endpoint, MessageCategory messageCategory, string sessionId, CancellationToken cancellationToken)
         {
             int retryCount = 0;
             do
             {
                 try
                 {
-                    HttpResponseMessage httpResponseMessage = await httpClient.GetAsync($"payments/{sessionId}", cancellationToken);
+                    HttpResponseMessage httpResponseMessage = await httpClient.GetAsync($"{endpoint}/{sessionId}", cancellationToken);
                     httpResponseMessage.EnsureSuccessStatusCode(); 
                 
                     string responseJson = await httpResponseMessage.Content.ReadAsStringAsync(cancellationToken); // Content is { PaymentResponse }
-                    return messageParser.ParseMessagePayload(MessageCategory.Payment, MessageType.Response, responseJson) as PaymentResponse;
+                    return messageParser.ParseMessagePayload(messageCategory, MessageType.Response, responseJson);
                 }
                 catch(Exception)
                 {

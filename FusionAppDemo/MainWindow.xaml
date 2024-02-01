@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FusionAppDemo"
         mc:Ignorable="d"
-        Title="MainWindow" Height="480" Width="640">
+        Title="MainWindow" Height="690" Width="790">
 
     <Window.Resources>
         <Style TargetType="Button">
@@ -86,7 +86,7 @@
                 <Label Content="SALE ID:"/>
                 <Label x:Name="LblSaleId" Content="" />
             </StackPanel>
-            
+
             <Label Content="Sale Items"/>
             <ListBox x:Name="LboSaleItems" Height="100" FontFamily="Courier New"/>
 
@@ -101,12 +101,30 @@
             <StackPanel Orientation="Horizontal">
                 <Label Content="TOTAL:"/>
                 <Label x:Name="LblTotal" Content="0.00"/>
-            </StackPanel>                
+            </StackPanel>
 
             <Button x:Name="BtnTender" Content="Tender" Click="BtnTender_Click" Width="128" Height="32" Margin="10"/>
+
+            <StackPanel Orientation="Vertical" Margin="8" Background="AliceBlue">
+                <Label Content="Gift Card " Style="{StaticResource TitleStyle}"/>
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="EAN/UPC:"/>
+                    <TextBox x:Name="TxtEanUPC" Text="79936689033"/>
+                    <Label Content="Stored Value ID:"/>
+                    <TextBox x:Name="TxtStoredValueID" Text="799366890330006375091922607307"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Amount:"/>
+                    <TextBox x:Name="TxtGCAmount" Text="50.00"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="BtnActivateGiftCard" Content="Activate" Click="BtnActivate_Click" Width="130" Height="32" Margin="10"/>
+                    <Button x:Name="BtnDeactivateGiftCard" Content="Deactivate" Click="BtnDeactivate_Click" Width="130" Height="32" Margin="10"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button x:Name="BtnCheckBalance" Content="Check Balance" Click="BtnBalInq_Click" Width="150" Height="32" Margin="10"/>
         </StackPanel>
-        
-        
-        
+
     </Grid>
 </Window>
