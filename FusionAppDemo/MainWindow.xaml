@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FusionAppDemo"
         mc:Ignorable="d"
-        Title="MainWindow" Height="690" Width="790">
+        Title="MainWindow" Height="910" Width="790">
 
     <Window.Resources>
         <Style TargetType="Button">
@@ -81,7 +81,7 @@
                 <Label Content="Sale" Style="{StaticResource TitleStyle}"/>
                 <Button x:Name="BtnNewSale" Content="New Sale" Click="BtnNewSale_Click" Width="128"/>
             </StackPanel>
-
+           
             <StackPanel Orientation="Horizontal">
                 <Label Content="SALE ID:"/>
                 <Label x:Name="LblSaleId" Content="" />
@@ -101,6 +101,57 @@
             <StackPanel Orientation="Horizontal">
                 <Label Content="TOTAL:"/>
                 <Label x:Name="LblTotal" Content="0.00"/>
+            </StackPanel>
+
+            <StackPanel Margin="8" Orientation="Horizontal">
+                <Border CornerRadius="6" BorderBrush="Gray" Background="AliceBlue" BorderThickness="2" DockPanel.Dock="Top">
+                    <StackPanel Grid.Column="0" Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkAllCards" VerticalAlignment="Center" Checked="ChkAllCards_Checked" Unchecked="ChkAllCards_NotChecked"/>
+                            <Label Content="Allowed Payment Types:"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkSchemeCards" VerticalAlignment="Center" Checked="ChkSchemeCards_Checked" Unchecked="ChkPaymentBrand_NotChecked"/>
+                            <Label Content="Scheme Cards"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkFlybuys" VerticalAlignment="Center" Checked="ChkFlybuys_Checked" Unchecked="ChkPaymentBrand_NotChecked"/>
+                            <Label Content="Flybuys"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkGiftCards" VerticalAlignment="Center" Checked="ChkGiftCards_Checked" Unchecked="ChkPaymentBrand_NotChecked"/>
+                            <Label Content="Gift Cards"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkFuelCards" VerticalAlignment="Center" Checked="ChkFuelCards_Checked" Unchecked="ChkPaymentBrand_NotChecked"/>
+                            <Label Content="Fuel Cards"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border CornerRadius="6" BorderBrush="Gray" Background="AliceBlue" BorderThickness="2" DockPanel.Dock="Top">
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Label Content="Not Allowed Payment Types:"/>
+                            <Label x:Name="LblNotAllowedPaymentBrands" Content="" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkNotSchemeCards" VerticalAlignment="Center" Checked="ChkNotSchemeCards_Checked"/>
+                            <Label Content="Scheme Cards"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkNotFlybuys" VerticalAlignment="Center" Checked="ChkNotFlybuys_Checked"/>
+                            <Label Content="Flybuys"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkNotGiftCards" VerticalAlignment="Center" Checked="ChkNotGiftCards_Checked"/>
+                            <Label Content="Gift Cards"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="ChkNotFuelCards" VerticalAlignment="Center" Checked="ChkNotFuelCards_Checked"/>
+                            <Label Content="Fuel Cards"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <Button x:Name="BtnTender" Content="Tender" Click="BtnTender_Click" Width="128" Height="32" Margin="10"/>

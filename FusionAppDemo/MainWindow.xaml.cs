@@ -29,6 +29,7 @@ namespace FusionAppDemo
         private string saleId;
         private readonly bool initialised;
         private TransactionIdentification? referencePOITransactionID = null;
+        private bool chkAllCardsSelected = false;
 
         public MainWindow()
         {
@@ -62,7 +63,6 @@ namespace FusionAppDemo
             catch (Exception ex)
             {
                 MessageBox.Show($"Error processing payment\n\n{ex.Message}");
-                throw;
             }
 
             // New sale
@@ -139,11 +139,66 @@ namespace FusionAppDemo
                     Categories = ["CASHOUT"],
                     CustomFields = []
                 });
-            }
+            }            
 
             // Construct payment request
             PaymentRequest paymentRequest = new(saleId, requestedAmount, basket, paymentType);
             paymentRequest.PaymentTransaction.AmountsReq.CashBackAmount = cashoutAmount;
+
+            if (ChkAllCards.IsChecked == false)
+            {
+                List<string> paymentBrands = new List<string>();
+                int allowedPaymentBrandCount = 0;
+                if (ChkSchemeCards.IsChecked == true)
+                {
+                    ++allowedPaymentBrandCount;
+                    paymentBrands.Add("Category:Schemes");
+                }
+                else if (ChkNotSchemeCards.IsChecked == true)
+                {
+                    paymentBrands.Add("!Category:Schemes");
+                }
+
+                if (ChkFlybuys.IsChecked == true)
+                {
+                    ++allowedPaymentBrandCount;
+                    paymentBrands.Add("0402");
+                }
+                else if (ChkNotFlybuys.IsChecked == true)
+                {
+                    paymentBrands.Add("!0402");
+                }
+
+                if (ChkGiftCards.IsChecked == true)
+                {
+                    ++allowedPaymentBrandCount;
+                    paymentBrands.Add("Category:GiftCard");
+                }
+                else if (ChkNotGiftCards.IsChecked == true)
+                {
+                    paymentBrands.Add("!Category:GiftCard");
+                }
+
+                if (ChkFuelCards.IsChecked == true)
+                {
+                    ++allowedPaymentBrandCount;
+                    paymentBrands.Add("Category:Fuel");
+                }
+                else if (ChkNotFuelCards.IsChecked == true)
+                {
+                    paymentBrands.Add("!Category:Fuel");
+                }
+
+                if (allowedPaymentBrandCount == 0)
+                {
+                    throw new Exception("At least 1 payment type must be allowed.");
+                }
+
+                paymentRequest.PaymentTransaction.TransactionConditions = new TransactionConditions()
+                {
+                    AllowedPaymentBrand = paymentBrands
+                };
+            }            
 
             // Build json and send/recv
             string? requestJson = messageParser.MessagePayloadToString(paymentRequest) ?? throw new Exception("Error building request message");
@@ -365,6 +420,7 @@ namespace FusionAppDemo
             saleId = DateTime.Now.ToString("yyyyMMddHHmmss");
             TxtCashout.Text = "0.00";
             basket.Clear();
+            ChkAllCards.IsChecked = true;
             UpdateUI();
         }
 
@@ -495,7 +551,77 @@ namespace FusionAppDemo
             UpdateUI();
         }
 
-        #endregion
+        private void ChkAllCards_Checked(object sender, RoutedEventArgs e)
+        {
+            chkAllCardsSelected = true;
+            ChkSchemeCards.IsChecked = true;
+            ChkFlybuys.IsChecked = true;
+            ChkGiftCards.IsChecked = true;
+            ChkFuelCards.IsChecked = true;
+        }
+
+        private void ChkAllCards_NotChecked(object sender, RoutedEventArgs e)
+        {
+            if (chkAllCardsSelected)
+            {
+                chkAllCardsSelected = false;
+                ChkSchemeCards.IsChecked = false;
+                ChkFlybuys.IsChecked = false;
+                ChkGiftCards.IsChecked = false;
+                ChkFuelCards.IsChecked = false;
+            }
+        }
+
+        private void ChkPaymentBrand_NotChecked(object sender, RoutedEventArgs e)
+        {
+            if(ChkAllCards.IsChecked == true)
+            {
+                chkAllCardsSelected = false;
+                ChkAllCards.IsChecked = false;
+            }
+        }
+
+        private void ChkSchemeCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkNotSchemeCards.IsChecked = false;            
+        }        
+
+        private void ChkFlybuys_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkNotFlybuys.IsChecked = false;
+        }
+
+        private void ChkGiftCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkNotGiftCards.IsChecked = false;
+        }
+
+        private void ChkFuelCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkNotFuelCards.IsChecked = false;
+        }
+
+        private void ChkNotSchemeCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkSchemeCards.IsChecked = false;
+        }
+
+        private void ChkNotFlybuys_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkFlybuys.IsChecked = false;
+        }
+
+        private void ChkNotGiftCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkGiftCards.IsChecked = false;
+        }
+
+        private void ChkNotFuelCards_Checked(object sender, RoutedEventArgs e)
+        {
+            ChkFuelCards.IsChecked = false;
+        }
+
+        #endregion        
     }
 }
 
